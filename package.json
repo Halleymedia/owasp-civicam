@@ -1,0 +1,17 @@
+{
+  "name": "civicam-owasp-v4-test-suite",
+  "version": "1.0.0",
+  "description": "Civicam OWASP v4 Test Suite",
+  "dependencies": {
+    "axios": "^0.19.0",
+    "dotenv": "^8.2.0",
+    "eslint": "^5.15.1",
+    "eslint-plugin-jasmine": "^2.10.1",
+    "jasmine": "^3.5.0"
+  },
+  "author": "Halleymedia snc",
+  "license": "ISC",
+  "scripts": {
+    "test": "jasmine --config=jasmine.json"
+  }
+}
