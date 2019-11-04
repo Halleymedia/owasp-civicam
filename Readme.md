@@ -3,6 +3,8 @@ This project performs tests described in the [OWASP Testing Guide v4](https://ww
 
 Since the Civicam REST API is improved on a daily basis, these tests are run daily.
 
+![Compilation status](https://codebuild.eu-central-1.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoiTWM3TlpxNVNUWmxMZmFOZFk1TXFRNE53UlBEZ3Zjc0YrNHpUYnAwc1U0dzNPNW9GK1cwbmRYVWlIVkJRTElwRWVpVE9MczBYQ3J0SW5UL2c2MVJ3QzFjPSIsIml2UGFyYW1ldGVyU3BlYyI6ImhWeVlzK2pyci8wQytqa2QiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=master)
+
 ## The quest for software security and quality
 Here at Civicam we make tested and secure software in compliance with GDPR regulations. We are fully aware this is no simple task but we strive to give our customers and our users the safest web navigation experience they deserve.
 
