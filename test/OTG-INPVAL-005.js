@@ -2,12 +2,13 @@
 describe("OTG-AUTHN-004",
   () => {
 
-    it("returns a 401 status code for a direct page request", async () => {
+    it("returns a 401 status code for a SQL injection attempt", async () => {
+
       //Arrange
-      const client = require("./services/client").anonymous();
+      const credentials = 'ApiKey test\' OR 1=1;--';
+      const client = require("./services/client").authenticated(credentials);
 
       //Act
-      //const { request, response, secure, certificate, tls } = await client.get('/videos');
       const { response } = await client.get('/videos');
 
       //Assert
