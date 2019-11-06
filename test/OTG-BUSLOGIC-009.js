@@ -10,18 +10,15 @@ describe("OTG-BUSLOGIC-009",
         "name": "Mario Rossi",
         "role": "Assessore"
       };
-
-      const fs = require('fs');
-      const path = require('path');
-      const filecontent = fs.readFileSync(path.join(__dirname, './files/script.php'));
+      const badPicture = client.file('script.php');
 
       //Act
       const speaker = (await client.post('/speakers', params)).response.data;
-      const response_picture = (await client.put(`/speakers/${speaker.id}/picture`, filecontent)).response;
+      const pictureResponse = (await client.put(`/speakers/${speaker.id}/picture`, badPicture)).response;
       await client.delete(`/speakers/${speaker.id}/`);
 
       //Assert
-      expect(response_picture.status).toEqual(400);
+      expect(pictureResponse.status).toEqual(400);
     });
 
   }

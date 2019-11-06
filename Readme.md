@@ -8,7 +8,7 @@ Since the Civicam REST API is improved on a daily basis, these tests are run dai
 ## The quest for software security and quality
 Here at Civicam we make tested and secure software in compliance with GDPR regulations. We are fully aware this is no simple task but we strive to give our customers and our users the safest web navigation experience they deserve.
 
-![Civicam Logo](civicam.png)
+![Civicam Logo](test/files/civicam.png)
 
 
 ## Running these tests in your local environment
