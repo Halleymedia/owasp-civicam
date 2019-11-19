@@ -1,5 +1,8 @@
 const axios = require('axios');
 const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const FormData = require('form-data');
 const restApiHost = 'api.civicam.it';
 const restApiBasePath = '/test/v1/';
 require('dotenv').config();
@@ -11,20 +14,24 @@ class Client {
         this.basePath = new String(restApiBasePath);
     }
 
-    async get(path, headers) {
-        return await request(this, 'get', path, null, headers);
+    file(name) {
+        return Object.freeze(new FileDefinition(name));
     }
 
-    async post(path, body, headers) {
-        return await request(this, 'post', path, body, headers);
+    async get(relativePath, headers) {
+        return await request(this, 'get', relativePath, null, headers);
     }
 
-    async put(path, body, headers) {
-        return await request(this, 'put', path, body, headers);
+    async post(relativePath, body, headers) {
+        return await request(this, 'post', relativePath, body, headers);
     }
 
-    async delete(path, body, headers) {
-        return await request(this, 'delete', path, body, headers);
+    async put(relativePath, body, headers) {
+        return await request(this, 'put', relativePath, body, headers);
+    }
+
+    async delete(relativePath, body, headers) {
+        return await request(this, 'delete', relativePath, body, headers);
     }
 
     async login() {
@@ -51,13 +58,13 @@ const publicApi = {
 };
 
 
-async function request(client, method, path, body, customHeaders) {
+async function request(client, method, relativePath, body, customHeaders) {
     if (!client || !method)
     {
         throw 'Cannot make a request: client or method missing';
     }
-    const url = makeUrl(client, path);
-    const headers = makeHeaders(client, customHeaders, method, body);
+    const url = makeUrl(client, relativePath);
+    const headers = makeHeaders(client, customHeaders);
     const config = makeConfig(method, url, headers, body);
 
     try {
@@ -65,6 +72,20 @@ async function request(client, method, path, body, customHeaders) {
         return Object.freeze(new WebRequestResult(response));
     } catch (e) {
         throw e.message;
+    }
+}
+
+class FileDefinition {
+    constructor(name) {
+        if (!name) {
+            throw 'You must provide a file name';
+        }
+        const fullPath = path.join(__dirname, '../files/', name);
+        if (!fs.existsSync(fullPath)) {
+            throw `File '${name}' does not exist in the 'test/files/' directory`;
+        }
+        this.name = new String(name);
+        this.fullPath = new String(fullPath);
     }
 }
 
@@ -134,13 +155,13 @@ module.exports = publicApi;
 
 
 
-function makeUrl(client, path) {
-    path = (path || '').substr(0, 1) == '/' ? path.substr(1) : path;
-    const url = path.substr(0, 4) == 'http' ? path : `https://${client.host}${client.basePath}${path}`;
+function makeUrl(client, relativePath) {
+    relativePath = (relativePath || '').substr(0, 1) == '/' ? relativePath.substr(1) : relativePath;
+    const url = relativePath.substr(0, 4) == 'http' ? relativePath : `https://${client.host}${client.basePath}${relativePath}`;
     return url;
 }
 
-function makeHeaders(client, customHeaders, method, body) {
+function makeHeaders(client, customHeaders) {
     const headers = customHeaders || {};
     
     if (!('User-Agent' in headers)) {
@@ -150,27 +171,39 @@ function makeHeaders(client, customHeaders, method, body) {
     if (client.authentication.length && !('Authorization' in headers)) {
         headers['Authorization'] = client.authentication.toString();
     }
-    if (hasBody(method, body) && !('Content-Type' in headers)) {
-        headers['Content-Type'] = 'application/json; charset=utf-8';
-    }
     return headers;
 }
 
-function makeConfig(method, url , headers, body)
+function makeConfig(method, url, headers, body)
 {
     const config = {
         method: method,
         url: url,
         headers: headers,
         validateStatus: () => true,
-        httpsAgent: new https.Agent({ 
+        httpsAgent: new https.Agent({
             maxCachedSessions: 0,
             rejectUnauthorized: true //Throw an exception for invalid certificates
         })
     };
 
     if (hasBody(method, body)) {
-        config.data = body;
+        let contentType;
+
+        if (body instanceof FileDefinition) {
+            const formData = new FormData();
+            const content = fs.createReadStream(body.fullPath.toString());
+            formData.append("file", content, body.name.toString());
+            contentType = `multipart/form-data; boundary=${formData._boundary}`;
+            config.data = formData;
+        } else {
+            contentType = 'application/json; charset=utf-8';
+            config.data = body;
+        }
+
+        if (!('Content-Type' in headers)) {
+            headers['Content-Type'] = contentType;
+        }
     }
     return config;
 }
