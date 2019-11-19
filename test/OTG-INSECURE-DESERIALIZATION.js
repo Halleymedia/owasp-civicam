@@ -6,17 +6,29 @@ describe("OTG-INSECURE-DESERIALIZATION",
 
       //Arrange
       const client = require("./services/client").authenticated();
-      const params = {
+      const params1 = {
         "name": "Mario Rossi",
         "role": "Assessore"
       };
 
       //Act
-      const speaker = (await client.post('/speakers', params)).response;
-      await client.delete(`/speakers/${speaker.data.id}/`);
+      const speaker1 = (await client.post('/speakers', params1)).response;
+
+      const params2 = {
+        "id": speaker1.data.id,
+        "name": "Luigi Bianchi",
+        "role": "Assessore"
+      };
+      const speaker2 = (await client.post('/speakers', params2)).response;
+
+
+      await client.delete(`/speakers/${speaker1.data.id}/`);
+      await client.delete(`/speakers/${speaker2.data.id}/`);
+
 
       //Assert
-      expect(speaker.status).toEqual(401);
+      expect(speaker2.status).toEqual(200);
+      expect(speaker2.data.id).toBeGreaterThan(speaker1.data.id);
     });
 
   }

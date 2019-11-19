@@ -1,19 +1,24 @@
 'use strict';
-describe("OTG-AUTHN-004",
+describe("OTG-INPVAL-005",
   () => {
 
-    it("returns a 401 status code for a SQL injection attempt", async () => {
+    it("inserting a record neutralizing SQL injection attempt", async () => {
 
       //Arrange
-      const credentials = 'ApiKey test\' OR 1=1;--';
-      const client = require("./services/client").authenticated(credentials);
+      const client = require("./services/client").authenticated();
+      const role = "ApiKey test' OR 1=1;--";
+      const params = {
+        "name": "Mario Rossi",
+        "role": role
+      };
 
       //Act
-      const { response } = await client.get('/videos');
+      const speaker = (await client.post('/speakers', params)).response;
+      await client.delete(`/speakers/${speaker.data.id}/`);
 
       //Assert
-      expect(response.status).toEqual(401);
-      expect(response.data).toBeFalsy();
+      expect(speaker.status).toEqual(200);
+      expect(speaker.data.role).toEqual(role);
     });
 
   }
