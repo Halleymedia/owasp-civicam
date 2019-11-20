@@ -8,10 +8,14 @@ const restApiBasePath = '/test/v1/';
 require('dotenv').config();
 
 class Client {
-    constructor(authentication) {
-        this.authentication = new String(authentication || '');
+
+    constructor() {
         this.host = new String(restApiHost);
         this.basePath = new String(restApiBasePath);
+        this.defaultHeaders = {};
+        this.credentials = new ClientCredentials(process.env.CIVICAM_CREDENTIALS);
+        
+        return Object.freeze(this);
     }
 
     file(name) {
@@ -19,61 +23,50 @@ class Client {
     }
 
     async get(relativePath, headers) {
-        return await request(this, 'get', relativePath, null, headers);
+        return await this.request('get', relativePath, null, headers);
     }
 
     async post(relativePath, body, headers) {
-        return await request(this, 'post', relativePath, body, headers);
+        return await this.request('post', relativePath, body, headers);
     }
 
     async put(relativePath, body, headers) {
-        return await request(this, 'put', relativePath, body, headers);
+        return await this.request('put', relativePath, body, headers);
     }
 
     async delete(relativePath, body, headers) {
-        return await request(this, 'delete', relativePath, body, headers);
+        return await this.request('delete', relativePath, body, headers);
     }
 
-    async login() {
+    async login(username, password) {
+        const authorization = makeAuthenticationPayload.call(this, username, password);
+        this.defaultHeaders['Authorization'] = authorization;
         return await this.get('/tenants');
     }
-}
 
-const publicApi = {
-    anonymous: () => Object.freeze(new Client()),
-    authenticated: (credentials) => {
-        if (credentials) {
-            if (!credentials.includes(' ')) {
-                throw 'The authentication credentials must include a space as a separator for Scheme and Value';
-            }
-        } else  {
-            const apiKey = process.env.CIVICAM_API_KEY;
-            if (!apiKey) {
-                throw 'API Key not found, couldn\'t make authenticated requests.';
-            }
-            credentials = `ApiKey ${apiKey}`;
+    logout() {
+        delete this.defaultHeaders['Authorization'];
+    }
+
+    async request(method, relativePath, body, customHeaders) {
+        if (!method)
+        {
+            throw 'Cannot make a request: method missing';
         }
-        return Object.freeze(new Client(credentials));
-    }
-};
-
-
-async function request(client, method, relativePath, body, customHeaders) {
-    if (!client || !method)
-    {
-        throw 'Cannot make a request: client or method missing';
-    }
-    const url = makeUrl(client, relativePath);
-    const headers = makeHeaders(client, customHeaders);
-    const config = makeConfig(method, url, headers, body);
-
-    try {
-        const response = await axios.request(config);
-        return Object.freeze(new WebRequestResult(response));
-    } catch (e) {
-        throw e.message;
+        const url = makeUrl.call(this, relativePath);
+        const headers = makeHeaders.call(this, customHeaders);
+        const config = makeConfig.call(this, method, url, headers, body);
+    
+        try {
+            const response = await axios.request(config);
+            return Object.freeze(new WebRequestResult(response));
+        } catch (e) {
+            throw e.message;
+        }
     }
 }
+
+const publicApi = Client;
 
 class FileDefinition {
     constructor(name) {
@@ -86,6 +79,8 @@ class FileDefinition {
         }
         this.name = new String(name);
         this.fullPath = new String(fullPath);
+
+        return Object.freeze(this);
     }
 }
 
@@ -93,13 +88,15 @@ class WebRequestResult {
     constructor(response) {
         const { request } = response;
 
-        this.request = Object.freeze(new ClientRequest(request));
-        this.response = Object.freeze(new ServerResponse(response));
+        this.request = new ClientRequest(request);
+        this.response = new ServerResponse(response);
         this.secure = new Boolean(('encrypted' in request.socket) && request.socket.encrypted);
 
         const certificate = request.socket.getPeerCertificate(true);
-        this.certificate = this.secure ? Object.freeze(new ServerCertificate(certificate)) : null;
-        this.tls = this.secure ? Object.freeze(new ServerTls(request.socket)) : null;
+        this.certificate = this.secure ? new ServerCertificate(certificate) : null;
+        this.tls = this.secure ? new ServerTls(request.socket) : null;
+
+        return Object.freeze(this);
     }
 }
 
@@ -117,6 +114,7 @@ class ClientRequest {
             const originalHeaderName = request._headerNames[headerName];
             this.headers[originalHeaderName] = headers[headerName];
         }
+        return Object.freeze(this);
     }
 }
 class ServerResponse {
@@ -126,6 +124,7 @@ class ServerResponse {
         this.data = response.data;
         this.headers = response.headers;
         this.success = new Boolean(this.status >= 200 && this.status < 300);
+        return Object.freeze(this);
     }
 }
 class ServerTls {
@@ -135,6 +134,7 @@ class ServerTls {
         const cipher = socket.getCipher();
         this.cipherName = new String(cipher.name);
         this.cipherMinimumVersion = new String(cipher.version);
+        return Object.freeze(this);
     }
 }
 class ServerCertificate {
@@ -146,31 +146,51 @@ class ServerCertificate {
         this.subjectAltName = new String(certificate.subjectaltname);
         this.issuerCertificate = null;
         if (certificate.issuerCertificate && (certificate.issuerCertificate.subject.CN != certificate.subject.CN)) {
-            this.issuerCertificate = Object.freeze(new ServerCertificate(certificate.issuerCertificate));
+            this.issuerCertificate = new ServerCertificate(certificate.issuerCertificate);
         }
+        return Object.freeze(this);
+    }
+}
+
+class ClientCredentials {
+    constructor(credentials) {
+        if (!credentials || !credentials.includes(':')) {
+            throw 'Ensure the credentials has been set properly (it must be something like username:password)';
+        }
+        const credentialParts = credentials.split(':');
+        this.username = new String(credentialParts[0]);
+        this.password = new String(credentialParts[1]);
+        return Object.freeze(this);
     }
 }
 
 module.exports = publicApi;
 
+function makeAuthenticationPayload(username, password) {
+    username = username !== undefined ? username : this.credentials.username;
+    password = password !== undefined ? password : this.credentials.password;
 
+    const scheme = 'Basic';
+    const value = `${username}:${password}`;
+    const buffer = Buffer.from(value);
+    const encodedValue = buffer.toString('base64');
+    return `${scheme} ${encodedValue}`;
+}
 
-function makeUrl(client, relativePath) {
+function makeUrl(relativePath) {
     relativePath = (relativePath || '').substr(0, 1) == '/' ? relativePath.substr(1) : relativePath;
-    const url = relativePath.substr(0, 4) == 'http' ? relativePath : `https://${client.host}${client.basePath}${relativePath}`;
+    const url = relativePath.substr(0, 4) == 'http' ? relativePath : `https://${this.host}${this.basePath}${relativePath}`;
     return url;
 }
 
-function makeHeaders(client, customHeaders) {
-    const headers = customHeaders || {};
+function makeHeaders(customHeaders) {
+    customHeaders = customHeaders || {};
+    const headers = { ...this.defaultHeaders, ...customHeaders };
     
     if (!('User-Agent' in headers)) {
         headers['User-Agent'] = 'OWASP Test Suite for Civicam REST API';
     }
     
-    if (client.authentication.length && !('Authorization' in headers)) {
-        headers['Authorization'] = client.authentication.toString();
-    }
     return headers;
 }
 

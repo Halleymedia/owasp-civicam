@@ -13,11 +13,11 @@ Here at Civicam we make tested and secure software in compliance with GDPR regul
 
 ## Running these tests in your local environment
 You can run these tests on your machine by following these steps:
- 1. Contact us and ask for an API KEY for our test environment. It's needed by most of the tests in this suite;
- 2. Ensure [Node.js](https://nodejs.org) v11.2.0+ is installed on your machine;
+ 1. Contact us and ask for a _username_ and _password_ for our test environment. It's needed by most of the tests in this suite;
+ 2. Ensure [Node.js](https://nodejs.org) v12+ is installed on your machine;
  3. Clone/Download this repository but first, please, [read the license](LICENSE);
- 4. Create an environment variable named `CIVICAM_API_KEY` and set its value to the API KEY we've sent you;
-    * Alternatively, you can create a `.env` file by renaming the `.env.example` file and defining the `CIVICAM_API_KEY` setting in there;
+ 4. Create an environment variable named `CIVICAM_CREDENTIALS` and set its value to the username and password we've sent you, separated by a : symbol (e.g. _username:password_);
+    * Alternatively, you can create a `.env` file by renaming the `.env.example` file and defining the `CIVICAM_CREDENTIALS` setting in there;
  5. Run `npm install`
 
  Now, if you want to **run tests from the command line**:

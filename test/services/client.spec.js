@@ -1,10 +1,11 @@
 'use strict';
+const Client = require('./client');
 describe("ClientSpec",
   () => {
 
     it("uses the correct HTTP verb when the request is sent", async () => {
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act & Assert
       for(const verb of ['get', 'post', 'put', 'delete']) {
@@ -13,30 +14,46 @@ describe("ClientSpec",
       }
     });
 
-    it("is a frozen object", async () => {
+    it("is a frozen object", () => {
       //Arrange
       const arbitraryValue = 'blah';
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act & Assert
-      expect(() => client.authentication = arbitraryValue).toThrow();
+      expect(() => client.credentials = arbitraryValue).toThrow();
+      expect(() => client.defaultHeaders = arbitraryValue).toThrow();
       expect(() => client.host = arbitraryValue).toThrow();
       expect(() => client.basePath = arbitraryValue).toThrow();
     });
 
-    it("defines a host and base path", async () => {
+    it("it exposes the default credentials", () => {
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
+      const expectedCredentials = process.env.CIVICAM_CREDENTIALS;
+
+      //Act
+      const actualCredentials = `${client.credentials.username}:${client.credentials.password}`;
+
+      //Act & Assert
+      expect(expectedCredentials).toEqual(actualCredentials);
+    });
+
+
+    it("defines a host, a base path, a collection of headers and a set of credentials", () => {
+      //Arrange
+      const client = new Client();
 
       //Assert
       expect(client.host).toBeTruthy();
       expect(client.basePath).toBeTruthy();
+      expect(client.defaultHeaders).toBeTruthy();
+      expect(client.credentials).toBeTruthy();
     });
 
     it("invokes Civicam REST API when just the path is provided", async () => {
 
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act
       const { request } = await client.get('/environment');
@@ -49,7 +66,7 @@ describe("ClientSpec",
     it("provides the certificate and TLS connection info", async () => {
 
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act
       const { secure, certificate, tls } = await client.get('/environment');
@@ -70,7 +87,7 @@ describe("ClientSpec",
     it("returns a JavaScript object for a JSON response", async () => {
 
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act
       const { response } = await client.get('/environment');
@@ -83,7 +100,7 @@ describe("ClientSpec",
     it("returns a status code of 200 for a successful request", async () => {
 
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act
       const { response } = await client.get('/environment');
@@ -94,23 +111,54 @@ describe("ClientSpec",
       expect(response.success).toEqual(true);
     });
 
+    it("returns a status code of 200 for a successful authenticated request", async () => {
+
+      //Arrange
+      const client = new Client();
+      await client.login();
+
+      //Act
+      const { response } = await client.get('/tenants');
+
+      //Assert
+      expect(response.status).toEqual(200);
+      expect(response.statusText).toEqual('OK');
+      expect(response.success).toEqual(true);
+    });
+
+    it("returns a status code of 401 for an anonymous request", async () => {
+
+      //Arrange
+      const client = new Client();
+
+      //Act
+      const { response } = await client.get('/tenants');
+
+      //Assert
+      expect(response.status).toEqual(401);
+      expect(response.statusText).toEqual('Unauthorized');
+      expect(response.success).toEqual(false);
+    });
+
     it("includes the authorization header when authenticated", async () => {
 
       //Arrange
-      const client = require('./client').authenticated();
+      const client = new Client();
+      await client.login();
 
       //Act
       const { request } = await client.get('/environment');
 
       //Assert
       expect(request.headers['Authorization']).toBeTruthy();
-      expect(request.headers['Authorization']).toEqual(client.authentication);
     });
 
-    it("does not include the authorization header when anonymous", async () => {
+    it("removes the authorization header after logout", async () => {
 
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
+      await client.login();
+      client.logout();
 
       //Act
       const { request } = await client.get('/environment');
@@ -119,20 +167,23 @@ describe("ClientSpec",
       expect(request.headers['Authorization']).toBeFalsy();
     });
 
-    it("rejects credentials without a scheme", async () => {
+    it("does not include the authorization header when anonymous", async () => {
 
       //Arrange
-      const credentialsWithoutScheme = 'blah';
+      const client = new Client();
 
-      //Act & Assert
-      expect(() => require('./client').authenticated(credentialsWithoutScheme)).toThrow();
+      //Act
+      const { request } = await client.get('/environment');
+
+      //Assert
+      expect(request.headers['Authorization']).toBeFalsy();
     });
 
     it("can make requests to any url", async () => {
 
       //Arrange
       const host = 'www.civicam.it';
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act
       const { request, response } = await client.get(`https://${host}`);
@@ -146,7 +197,7 @@ describe("ClientSpec",
     it("can find files in the files directory", () => {
       
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
       const fileName = 'civicam.png';
 
       //Act
@@ -159,7 +210,7 @@ describe("ClientSpec",
     it("throws for unexisting files", () => {
       
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act & Assert
       expect(() => client.file('UnexistingFile.foo')).toThrow();
@@ -168,7 +219,7 @@ describe("ClientSpec",
     it("makes secure requests to the web api", async () => {
       
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
 
       //Act & Assert
       const { request } = await client.get('/environment');
@@ -180,7 +231,7 @@ describe("ClientSpec",
     it("can upload files with a multipart request", async () => {
       
       //Arrange
-      const client = require('./client').anonymous();
+      const client = new Client();
       const fileDefinition = client.file('civicam.png');
       const expectedContentType = 'multipart/form-data; boundary=';
 
