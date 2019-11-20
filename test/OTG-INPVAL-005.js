@@ -1,24 +1,27 @@
 'use strict';
+const Client = require("./services/client");
 describe("OTG-INPVAL-005",
   () => {
 
-    it("inserting a record neutralizing SQL injection attempt", async () => {
+    it("neutralizes a SQL injection attempt when inserting a record", async () => {
 
       //Arrange
-      const client = require("./services/client").authenticated();
-      const role = "ApiKey test' OR 1=1;--";
-      const params = {
+      const client = new Client();
+      const maliciousRole = "test'; DROP TABLE speakers; --";
+      const speakerCreationParams = {
         "name": "Mario Rossi",
-        "role": role
+        "role": maliciousRole
       };
 
       //Act
-      const speaker = (await client.post('/speakers', params)).response;
-      await client.delete(`/speakers/${speaker.data.id}/`);
+      await client.login();
+      const { response } = await client.post('/speakers', speakerCreationParams);
+      const speakerId = response.data.id;
+      await client.delete(`/speakers/${speakerId}/`);
 
       //Assert
-      expect(speaker.status).toEqual(200);
-      expect(speaker.data.role).toEqual(role);
+      expect(response.status).toEqual(200);
+      expect(response.data.role).toEqual(maliciousRole);
     });
 
   }

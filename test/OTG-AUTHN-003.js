@@ -1,21 +1,25 @@
 'use strict';
+const Client = require("./services/client");
+
 describe("OTG-AUTHN-003",
   () => {
-
-    it("Weak lock out mechanism", async () => {
+    it("performs account lockout for 30 minutes after 5 invalid login attempts", async () => {
       //Arrange
-      var client;
-      const credentials = {"user":"user", "password":"wrong-password"}
+      const client = new Client();
+      const correctUsername = client.credentials.username;
+      const correctPassword = client.credentials.password;
+      const wrongPassword = "wrong-password";
+
       //Act
-      for(var i = 0; i < 12; i++) {
-        client = require("./services/client").authenticated(credentials);
-        await client.get('/videos');
+      for(let attempt = 1; attempt <= 5; attempt++) {
+        await client.login(correctUsername, wrongPassword);
       }
-      client = require("./services/client").authenticated();
-      const { response } = await client.get('/videos');
+
+      const { response } = await client.login(correctUsername, correctPassword);
 
       //Assert
       expect(response.status).toEqual(429);
+      expect(response.headers['Retry-After']).toEqual(60 * 30); //30 minutes
     });
 
   }

@@ -172,7 +172,7 @@ function makeAuthenticationPayload(username, password) {
 
     const scheme = 'Basic';
     const value = `${username}:${password}`;
-    const buffer = new Buffer(value);
+    const buffer = Buffer.from(value);
     const encodedValue = buffer.toString('base64');
     return `${scheme} ${encodedValue}`;
 }
@@ -230,11 +230,4 @@ function makeConfig(method, url, headers, body)
 
 function hasBody(method, body) {
     return (method.toLowerCase() != 'get') && body;
-}
-
-function ensureString(value) {
-    if (!value) {
-        throw 'Value cannot be empty';
-    }
-    return (new String(value)).toString();
 }
