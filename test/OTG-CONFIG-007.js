@@ -1,22 +1,17 @@
 'use strict';
-const request = require('request');
+const Client = require("./services/client");
 describe("OTG-CONFIG-007",
   () => {
 
     it("Test HTTP Strict Transport Security", async () => {
       //Arrange
+      const client = new Client();
+
       //Act
-      const html = await new Promise((resolve, reject) => {
-        request('http://api.civicam.it', (error, response, body) => {
-            if (error) reject(error);
-            if (response.statusCode != 200) {
-                reject('Invalid status code <' + response.statusCode + '>');
-            }
-            resolve(body);
-        });
-    });
+      const { response } = await client.get('/environment');
+
       //Assert
-      expect(html).toEqual('4077');
+      expect(Object.keys(response.headers)).toContain('Strict-Transport-Security');
 
     }, 120000);
   }
