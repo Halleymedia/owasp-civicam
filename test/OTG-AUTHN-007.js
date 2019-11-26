@@ -1,32 +1,24 @@
 'use strict';
+const Client = require("./services/client");
 describe("OTG-AUTHN-007",
   () => {
 
     it("return 400 inserting an user with weak password", async () => {
 
       //Arrange
-      const client = require("./services/client").authenticated();
-      var user, params;
-      const passwords = [
-        "few",
-        "LettersOnly",
-        "lowercaseonly",
-        "UPPERCASEONLY",
-        "1234567890",
-        "password"
-      ];
+      const client = new Client();
+      const passwords = ["few", "LettersOnly", "lowercaseonly", "UPPERCASEONLY", "1234567890", "password"];
 
-      //Act
-      for(var i in passwords) {
-        params = {
-          "username" : "new-user-weak-psw-"+i,
-          "password" : passwords[i]
-        }
-        user = (await client.post('/users', params)).response;
+      await client.login();
+
+      for(const password of passwords) {
+        const params = {"password" : password}
+
+        //Act
+        const { response } = await client.put('/user/password', params);
 
         //Assert
-        expect(user.status).toEqual(400);
-        if(user.status == 200 && user.data && user.data.id > 0) await client.delete(`/users/${user.data.id}/`);
+        expect(response.status).toEqual(400);
       }
 
     });
@@ -34,43 +26,28 @@ describe("OTG-AUTHN-007",
     it("return 400 inserting an user with password = username", async () => {
 
       //Arrange
-      const client = require("./services/client").authenticated();
+      const client = new Client();
+      const params = {"password" : client.credentials.username}
 
       //Act
-      const username = "NewUser123!";
-      const params = {
-        "username" : username,
-        "password" : username
-      }
-      const user = (await client.post('/users', params)).response;
+      const { response } = await client.put('/user/password', params);
 
       //Assert
-      expect(user.status).toEqual(400);
-      if(user.status == 200 && user.data && user.data.id > 0) await client.delete(`/users/${user.data.id}/`);
-
+      expect(response.status).toEqual(400);
     });
 
     it("return 400 updating user with recently used password", async () => {
 
       //Arrange
-      const client = require("./services/client").authenticated();
-      var user, params;
+      const client = new Client();
+
+      const params = {"password" : client.credentials.password}
 
       //Act
-      params = {
-        "username" : "new-user-used-psw",
-        "password" : "GoodPassword123!"
-      }
-      user = (await client.post('/users', params)).response;
+      const { response } = await client.put('/user/password', params);
 
-      params = {
-        "id" : user.data.id,
-        "password" : "GoodPassword123!"
-      }
-      user = (await client.put('/users', params)).response;
       //Assert
-      expect(user.status).toEqual(400);
-      await client.delete(`/users/${user.data.id}/`);
+      expect(response.status).toEqual(400);
 
     });
 
