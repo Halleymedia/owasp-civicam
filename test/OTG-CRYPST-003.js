@@ -14,6 +14,6 @@ describe("OTG-CRYPST-003",
       //Assert
       expect(response.status).toEqual(400);
       expect(response.data.violations[0].code).toBe("protocol-error");
-    }, 120000);
+    });
   }
 );
