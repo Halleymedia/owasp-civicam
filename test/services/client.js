@@ -1,11 +1,11 @@
+require('dotenv').config();
 const axios = require('axios');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
-const restApiHost = 'api.civicam.it';
+const restApiHost = process.env.CIVICAM_API_HOST || 'api.civicam.it';
 const restApiBasePath = '/test/v1/';
-require('dotenv').config();
 
 class Client {
 
