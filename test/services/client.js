@@ -210,15 +210,21 @@ function makeHeaders(customHeaders) {
 
 function makeConfig(method, url, headers, body)
 {
+    const agentOptions = {
+        maxCachedSessions: 0,
+        rejectUnauthorized: true //Throw an exception for invalid certificates
+    };
+
+    if (process.env.NODE_EXTRA_CA_CERTS) {
+        agentOptions.ca = fs.readFileSync(process.env.NODE_EXTRA_CA_CERTS);
+    }
+
     const config = {
         method: method,
         url: url,
         headers: headers,
         validateStatus: () => true,
-        httpsAgent: new https.Agent({
-            maxCachedSessions: 0,
-            rejectUnauthorized: true //Throw an exception for invalid certificates
-        })
+        httpsAgent: new https.Agent(agentOptions)
     };
 
     if (hasBody(method, body)) {
