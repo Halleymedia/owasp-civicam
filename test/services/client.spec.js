@@ -39,7 +39,7 @@ describe("ClientSpec",
     });
 
 
-    it("defines a host, a base path, a collection of headers and a set of credentials", () => {
+    it("defines a host, a base path, a collection of defaults headers and a set of credentials", () => {
       //Arrange
       const client = new Client();
 
@@ -63,7 +63,7 @@ describe("ClientSpec",
       expect(request.path.indexOf(client.basePath)).toEqual(0);
     });
 
-    it("provides the certificate and TLS connection info", async () => {
+    it("provides the certificate and TLS connection info for secure requests", async () => {
 
       //Arrange
       const client = new Client();
@@ -82,6 +82,20 @@ describe("ClientSpec",
       expect(tls.protocol).toBeTruthy();
       expect(tls.cipherMinimumVersion).toBeTruthy();
       expect(tls.cipherName).toBeTruthy();
+    });
+
+    it("does not provide certificate and TLS connection info for insecure requests", async () => {
+
+      //Arrange
+      const client = new Client();
+
+      //Act
+      const { secure, certificate, tls } = await client.get(`http://${client.host}/${client.basePath}/environment`);
+
+      //Assert
+      expect(secure).toEqual(false);
+      expect(certificate).toBeFalsy();
+      expect(tls).toBeFalsy();
     });
 
     it("returns a JavaScript object for a JSON response", async () => {
@@ -151,6 +165,45 @@ describe("ClientSpec",
 
       //Assert
       expect(request.headers['Authorization']).toBeTruthy();
+    });
+
+    it("exposes canonicalized request headers", async () => {
+
+      //Arrange
+      const client = new Client();
+      await client.login();
+
+      //Act
+      const { request } = await client.get('/environment');
+
+      //Assert
+      for (const headerName in request.headers) {
+        const fragments = headerName.split('-');
+        for (const fragment in fragments) {
+          expect(fragment.substr(0, 1).toUpperCase()).toBe(fragment.substr(0, 1));
+          expect(fragment.substr(1).toLowerCase()).toBe(fragment.substr(1));
+        }
+      }
+    });
+
+    it("exposes canonicalized response headers", async () => {
+
+      //Arrange
+      const client = new Client();
+      await client.login();
+
+      //Act
+      const { response } = await client.get('/environment');
+
+      //Assert
+      for (const headerName in response.headers) {
+        const fragments = headerName.split('-');
+        for (const fragment in fragments) {
+          expect(fragment.substr(0, 1).toUpperCase()).toBe(fragment.substr(0, 1));
+          expect(fragment.substr(1).toLowerCase()).toBe(fragment.substr(1));
+        }
+      }
+      
     });
 
     it("removes the authorization header after logout", async () => {
