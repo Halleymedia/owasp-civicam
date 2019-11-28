@@ -13,6 +13,6 @@ describe("OTG-CONFIG-007",
       //Assert
       expect(Object.keys(response.headers)).toContain('Strict-Transport-Security');
 
-    }, 120000);
+    });
   }
 );

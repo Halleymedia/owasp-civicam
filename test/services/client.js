@@ -92,9 +92,14 @@ class WebRequestResult {
         this.response = new ServerResponse(response);
         this.secure = new Boolean(('encrypted' in request.socket) && request.socket.encrypted);
 
-        const certificate = request.socket.getPeerCertificate(true);
-        this.certificate = this.secure ? new ServerCertificate(certificate) : null;
-        this.tls = this.secure ? new ServerTls(request.socket) : null;
+        if (this.secure.valueOf()) {
+            const peerCertificate = request.socket.getPeerCertificate(true);
+            this.certificate = new ServerCertificate(peerCertificate);
+            this.tls = new ServerTls(request.socket);
+        } else {
+            this.certificate = null;
+            this.tls = null;
+        }
 
         return Object.freeze(this);
     }
@@ -107,13 +112,8 @@ class ClientRequest {
         this.port = new Number(request.socket.remotePort);
         this.host = new String(request.socket.servername);
         this.protocol = new String(request.agent.protocol.replace(':', ''));
+        this.headers = canonicalizeHeaders(request.getHeaders());
 
-        this.headers = {};
-        const headers = request.getHeaders();
-        for (const headerName in headers) {
-            const originalHeaderName = request._headerNames[headerName];
-            this.headers[originalHeaderName] = headers[headerName];
-        }
         return Object.freeze(this);
     }
 }
@@ -122,8 +122,9 @@ class ServerResponse {
         this.status = new Number(response.status);
         this.statusText = new String(response.statusText);
         this.data = response.data;
-        this.headers = response.headers;
+        this.headers = canonicalizeHeaders(response.headers);
         this.success = new Boolean(this.status >= 200 && this.status < 300);
+
         return Object.freeze(this);
     }
 }
@@ -166,6 +167,15 @@ class ClientCredentials {
 
 module.exports = publicApi;
 
+function canonicalizeHeaders(headers) {
+    const canonicalizedHeaders = {};
+    for (const headerName in headers) {
+        const normalizedHeaderName = headerName.split('-').map(word => word.substr(0,1).toUpperCase() + word.substr(1).toLowerCase()).join('-');
+        canonicalizedHeaders[normalizedHeaderName] = headers[headerName];
+    }
+    return canonicalizedHeaders;
+}
+
 function makeAuthenticationPayload(username, password) {
     username = username !== undefined ? username : this.credentials.username;
     password = password !== undefined ? password : this.credentials.password;
@@ -177,10 +187,14 @@ function makeAuthenticationPayload(username, password) {
     return `${scheme} ${encodedValue}`;
 }
 
-function makeUrl(relativePath) {
-    relativePath = (relativePath || '').substr(0, 1) == '/' ? relativePath.substr(1) : relativePath;
-    const url = relativePath.substr(0, 4) == 'http' ? relativePath : `https://${this.host}${this.basePath}${relativePath}`;
-    return url;
+function makeUrl(relativeOrAbsolutePath) {
+    relativeOrAbsolutePath = relativeOrAbsolutePath || '';
+    if (relativeOrAbsolutePath.substr(0, 4) == 'http') {
+        return relativeOrAbsolutePath;
+    }
+
+    relativeOrAbsolutePath = (relativeOrAbsolutePath.substr(0, 1) != '/' ? '/' : '') + relativeOrAbsolutePath;
+    return `https://${this.host}${this.basePath}${relativeOrAbsolutePath}`;
 }
 
 function makeHeaders(customHeaders) {

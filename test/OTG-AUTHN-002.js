@@ -18,6 +18,6 @@ describe("OTG-AUTHN-002",
           expect(response.data).toBeFalsy();
         }
       }
-    }, 120000);
+    }, 120000); //120 seconds timeout
   }
 );
