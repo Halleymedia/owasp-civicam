@@ -19,7 +19,7 @@ describe("OTG-AUTHN-003",
 
       //Assert
       expect(response.status).toEqual(429);
-      expect(response.headers['Retry-After']).toEqual(60 * 30); //30 minutes
+      expect(response.headers['Retry-After']).toEqual((60 * 30).toString()); //30 minutes
     });
 
   }
